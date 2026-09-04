@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --background: #050b18;
+  --foreground: #eaf2ff;
+  --panel: rgba(11, 24, 48, .78);
+  --panel-strong: #0b1830;
+  --line: rgba(148, 163, 184, .14);
+  --muted: #8ea1bb;
+  --cyan: #31d6d0;
+  --cyan-soft: #8cf7f0;
+  --coral: #ff7b6b;
+  --violet: #8b7cff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 12% -10%, rgba(49,214,208,.16), transparent 28rem),
+    radial-gradient(circle at 88% 8%, rgba(139,124,255,.16), transparent 30rem),
+    radial-gradient(circle at 60% 90%, rgba(255,123,107,.08), transparent 28rem),
+    #050b18;
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+  background-attachment: fixed;
+}
+* { box-sizing: border-box; }
+::selection { background: rgba(49,214,208,.25); color: white; }
+
+.card-surface {
+  @apply rounded-[1.25rem] border border-white/10 bg-[#0b1830]/[0.045] shadow-[0_20px_60px_rgba(0,0,0,.24)] backdrop-blur-xl;
+}
+.page-shell { @apply min-h-screen px-4 py-5 sm:px-6 sm:py-8 lg:px-10; }
+.eyebrow { @apply text-[0.68rem] font-bold uppercase tracking-[0.2em]; }
+.lift { @apply transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-[#0b1830]/[0.07]; }
+.glow { box-shadow: 0 0 0 1px rgba(49,214,208,.08), 0 20px 70px rgba(49,214,208,.08); }
+.grid-bg { background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 42px 42px; }
+
+@keyframes rise-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes pulse-glow { 0%,100% { opacity:.45; transform:scale(1) } 50% { opacity:.9; transform:scale(1.06) } }
+.rise-in { animation: rise-in .6s ease-out both; }
+.float { animation: float 5s ease-in-out infinite; }
+.pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+
+input, textarea, select {
+  color: #eaf2ff;
+  background: rgba(255,255,255,.045);
+  border-color: rgba(148,163,184,.18) !important;
+}
+input::placeholder, textarea::placeholder { color: #64748b; }
+select option { background: #0b1830; color: #eaf2ff; }
+button, a { -webkit-tap-highlight-color: transparent; }
