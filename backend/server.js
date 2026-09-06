@@ -40,11 +40,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/complaints', complaintRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/webhooks', webhookRoutes);
-
+app.use('/api/backend/auth', authRoutes);
+app.use('/api/backend/complaints', complaintRoutes);
+app.use('/api/backend/admin', adminRoutes);
+app.use('/api/backend/webhooks', webhookRoutes);
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
