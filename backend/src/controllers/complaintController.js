@@ -1,6 +1,10 @@
 const Complaint = require('../models/Complaint');
 const mongoose = require('mongoose');
 const analyzeComplaint = require('../utils/analyzeComplaint');
+const {
+  notifyMakeComplaintCreated,
+  notifyMakeStatusChanged,
+} = require('../services/makeAutomation.service');
 
 const isValidComplaintId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -46,6 +50,11 @@ const createComplaint = async (req, res) => {
     });
 
     const populatedComplaint = await complaint.populate('citizen', 'name email role');
+
+    // Server-side integration service: forward to Make.com asynchronously with error logging
+    notifyMakeComplaintCreated(populatedComplaint).catch((err) =>
+      console.error('[Make Webhook Error]', err.message)
+    );
 
     res.status(201).json({
       success: true,
@@ -160,12 +169,26 @@ const updateComplaintStatus = async (req, res) => {
       });
     }
 
+    const previousStatus = complaint.status;
     complaint.status = status;
+
+    if (status === 'Resolved' && !complaint.resolvedAt) {
+      complaint.resolvedAt = new Date();
+    }
+    if (status === 'Rejected' && !complaint.rejectedAt) {
+      complaint.rejectedAt = new Date();
+    }
+
     if (typeof adminNotes === 'string') {
       complaint.adminNotes = adminNotes.trim();
     }
     await complaint.save();
     await complaint.populate('citizen', 'name email role');
+
+    // Forward status change to Make automation
+    notifyMakeStatusChanged(complaint, previousStatus).catch((err) =>
+      console.error('[Make Status Webhook Error]', err.message)
+    );
 
     res.json({
       success: true,

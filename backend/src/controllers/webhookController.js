@@ -1,6 +1,7 @@
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 const analyzeComplaint = require('../utils/analyzeComplaint');
+const { notifyMakeComplaintCreated } = require('../services/makeAutomation.service');
 
 const getComplaintInput = (payload) => {
   const data = payload.data || payload.complaint || payload;
@@ -55,6 +56,11 @@ const createComplaintFromWebhook = async (req, res, source) => {
     const mongoComplaintId = complaint._id.toString();
     const complaintId = `CIV-${mongoComplaintId}`;
     const confirmationMessage = `Your complaint has been submitted successfully. Your complaint ID is ${complaintId}. You can use this ID to track your complaint.`;
+
+    // Trigger external automation (Make.com webhook)
+    notifyMakeComplaintCreated({ ...complaint.toObject(), citizen }).catch((err) =>
+      console.error('[Make Webhook Error]', err.message)
+    );
 
     console.log(`${source} complaint created: ${complaintId}`);
     return res.status(201).json({

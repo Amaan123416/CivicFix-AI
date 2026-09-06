@@ -7,7 +7,8 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "test": "node --check server.js && node --check scripts/seedAdmin.js && node --check src/controllers/authController.js && node --check src/controllers/complaintController.js",
-    "seed:admin": "node scripts/seedAdmin.js"
+    "seed:admin": "node scripts/seedAdmin.js",
+    "test:make": "node scripts/testMakeWebhook.js"
   },
   "keywords": [],
   "author": "",
