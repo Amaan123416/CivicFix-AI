@@ -1,6 +1,7 @@
 const Complaint = require('../models/Complaint');
 const mongoose = require('mongoose');
 const analyzeComplaint = require('../utils/analyzeComplaint');
+const cloudinary = require('../config/cloudinary');
 const {
   notifyMakeComplaintCreated,
   notifyMakeStatusChanged,
@@ -11,25 +12,72 @@ const isValidComplaintId = (id) => mongoose.Types.ObjectId.isValid(id);
 const getPublicSummary = async (req, res) => {
   try {
     const [complaints, total, resolved] = await Promise.all([
-      Complaint.find({}, 'title status priority category createdAt').sort({ createdAt: -1 }).limit(5).lean(),
+      Complaint.find({}, 'title status priority category createdAt')
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean(),
       Complaint.countDocuments(),
       Complaint.countDocuments({ status: 'Resolved' }),
     ]);
 
     res.json({
       success: true,
-      stats: { total, resolved, pending: await Complaint.countDocuments({ status: 'Pending' }) },
+      stats: {
+        total,
+        resolved,
+        pending: await Complaint.countDocuments({ status: 'Pending' }),
+      },
       complaints,
     });
   } catch (error) {
     console.error('Fetch public summary error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load public summary' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to load public summary',
+    });
+  }
+};
+
+// Upload complaint evidence image to Cloudinary
+const uploadComplaintImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select an image to upload',
+      });
+    }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'civicfix/complaints',
+      resource_type: 'image',
+    });
+
+    res.json({
+      success: true,
+      message: 'Image uploaded successfully',
+      imageUrl: result.secure_url,
+    });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload image',
+      error: error.message,
+    });
   }
 };
 
 const createComplaint = async (req, res) => {
   try {
-    const { title, description, category, location, priority, imageUrl } = req.body;
+    const {
+      title,
+      description,
+      category,
+      location,
+      priority,
+      imageUrl,
+    } = req.body;
 
     if (!title || !description || !category || !location) {
       return res.status(400).json({
@@ -46,12 +94,19 @@ const createComplaint = async (req, res) => {
       priority: priority || 'Medium',
       imageUrl: imageUrl || '',
       citizen: req.user._id,
-      aiAnalysis: analyzeComplaint({ title, description, category, priority }),
+      aiAnalysis: analyzeComplaint({
+        title,
+        description,
+        category,
+        priority,
+      }),
     });
 
-    const populatedComplaint = await complaint.populate('citizen', 'name email role');
+    const populatedComplaint = await complaint.populate(
+      'citizen',
+      'name email role'
+    );
 
-    // Server-side integration service: forward to Make.com asynchronously with error logging
     notifyMakeComplaintCreated(populatedComplaint).catch((err) =>
       console.error('[Make Webhook Error]', err.message)
     );
@@ -73,7 +128,9 @@ const createComplaint = async (req, res) => {
 
 const getUserComplaints = async (req, res) => {
   try {
-    const complaints = await Complaint.find({ citizen: req.user._id }).sort({ createdAt: -1 });
+    const complaints = await Complaint.find({
+      citizen: req.user._id,
+    }).sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -92,10 +149,16 @@ const getUserComplaints = async (req, res) => {
 const getComplaintById = async (req, res) => {
   try {
     if (!isValidComplaintId(req.params.id)) {
-      return res.status(400).json({ success: false, message: 'Invalid complaint ID' });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid complaint ID',
+      });
     }
 
-    const complaint = await Complaint.findById(req.params.id).populate('citizen', 'name email role');
+    const complaint = await Complaint.findById(req.params.id).populate(
+      'citizen',
+      'name email role'
+    );
 
     if (!complaint) {
       return res.status(404).json({
@@ -104,7 +167,10 @@ const getComplaintById = async (req, res) => {
       });
     }
 
-    if (req.user.role !== 'admin' && complaint.citizen._id.toString() !== req.user._id.toString()) {
+    if (
+      req.user.role !== 'admin' &&
+      complaint.citizen._id.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({
         success: false,
         message: 'Access denied',
@@ -127,7 +193,9 @@ const getComplaintById = async (req, res) => {
 
 const getAllComplaints = async (req, res) => {
   try {
-    const complaints = await Complaint.find().populate('citizen', 'name email role').sort({ createdAt: -1 });
+    const complaints = await Complaint.find()
+      .populate('citizen', 'name email role')
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -148,10 +216,18 @@ const updateComplaintStatus = async (req, res) => {
     const { status, adminNotes } = req.body;
 
     if (!isValidComplaintId(req.params.id)) {
-      return res.status(400).json({ success: false, message: 'Invalid complaint ID' });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid complaint ID',
+      });
     }
 
-    const validStatuses = ['Pending', 'In Progress', 'Resolved', 'Rejected'];
+    const validStatuses = [
+      'Pending',
+      'In Progress',
+      'Resolved',
+      'Rejected',
+    ];
 
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
@@ -175,6 +251,7 @@ const updateComplaintStatus = async (req, res) => {
     if (status === 'Resolved' && !complaint.resolvedAt) {
       complaint.resolvedAt = new Date();
     }
+
     if (status === 'Rejected' && !complaint.rejectedAt) {
       complaint.rejectedAt = new Date();
     }
@@ -182,10 +259,10 @@ const updateComplaintStatus = async (req, res) => {
     if (typeof adminNotes === 'string') {
       complaint.adminNotes = adminNotes.trim();
     }
+
     await complaint.save();
     await complaint.populate('citizen', 'name email role');
 
-    // Forward status change to Make automation
     notifyMakeStatusChanged(complaint, previousStatus).catch((err) =>
       console.error('[Make Status Webhook Error]', err.message)
     );
@@ -207,6 +284,7 @@ const updateComplaintStatus = async (req, res) => {
 
 module.exports = {
   getPublicSummary,
+  uploadComplaintImage,
   createComplaint,
   getUserComplaints,
   getComplaintById,
