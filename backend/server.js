@@ -39,6 +39,12 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+console.log('Vercel route types:', {
+  auth: typeof authRoutes,
+  complaints: typeof complaintRoutes,
+  admin: typeof adminRoutes,
+  webhooks: typeof webhookRoutes,
+});
 
 app.use('/api/backend/auth', authRoutes);
 app.use('/api/backend/complaints', complaintRoutes);
